@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Status Analysis - Smart Driver Assistance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #4cc9f0;
+            --text-color: #f8f9fa;
+            --dark-bg: #0f172a;
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg), #1e293b);
+            color: var(--text-color);
+            line-height: 1.6;
+            background-image: url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2000&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-blend-mode: overlay;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(76, 201, 240, 0.5);
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1rem;
+        }
+        
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.2);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+        
+        .card-header i {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .data-summary {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        
+        .summary-item {
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            min-width: 120px;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.5rem;
+        }
+        
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .active-value {
+            color: var(--success-color);
+        }
+        
+        .drowsy-value {
+            color: var(--danger-color);
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+            font-size: 1.2rem;
+            color: var(--accent-color);
+        }
+        
+        .loading i {
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .date-filter {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .date-filter select, .date-filter button {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgb(143, 209, 143);
+            color: var(--text-color);
+            font-family: 'Montserrat', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .date-filter select:hover, .date-filter button:hover{
+            background: rgb(97, 97, 172);
+        }
+        
+        .date-filter button {
+            background: var(--primary-color);
+        }
+        
+        .date-filter button:hover {
+            background: var(--secondary-color);
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: var(--primary-color);
+            transform: translateX(-5px);
+        }
+        
+        .back-link i {
+            margin-right: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .header p {
+                font-size: 0.9rem;
+            }
+            
+            .card {
+                padding: 1rem;
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Driver Status Analysis Dashboard</h1>
+            <p>Visualizing driver behavior patterns to improve safety and alertness</p>
+        </div>
+        
+        <!-- Add this button in the date-filter div -->
+        <div class="date-filter">
+            <select id="timeRange">
+                <option value="day">Last 24 Hours</option>
+                <option value="week">Last Week</option>
+                <option value="month">Last Month</option>
+                <option value="all">All Time</option>
+            </select>
+            <button id="refreshBtn"><i class="fas fa-sync-alt"></i> Refresh Data</button>
+            <button id="pdfButton"><i class="fas fa-file-pdf"></i> Generate PDF Report</button>
+        </div>
+        
+        <div class="analysis-grid">
+            <!-- Status Count Analysis -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Driver Status Distribution</h2>
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <div id="statusCountLoading" class="loading">
+                    <i class="fas fa-spinner"></i> Loading data...
+                </div>
+                <div id="statusCountChart" class="chart-container" style="display: none;">
+                    <canvas id="statusDistributionChart"></canvas>
+                </div>
+                <div class="data-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Active</div>
+                        <div class="summary-value active-value" id="activeCount">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Drowsy</div>
+                        <div class="summary-value drowsy-value" id="drowsyCount">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Ratio</div>
+                        <div class="summary-value" id="drowsyRatio">0%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hourly Trend Analysis -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Drowsiness by Hour</h2>
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div id="hourlyTrendLoading" class="loading">
+                    <i class="fas fa-spinner"></i> Loading data...
+                </div>
+                <div id="hourlyTrendChart" class="chart-container" style="display: none;">
+                    <canvas id="hourlyDistributionChart"></canvas>
+                </div>
+                <div class="data-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Peak Hour</div>
+                        <div class="summary-value" id="peakHour">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Safest Hour</div>
+                        <div class="summary-value" id="safestHour">--</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status Timeline Trend -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Drowsiness Timeline</h2>
+                    <i class="fas fa-chart-area"></i>
+                </div>
+                <div id="timelineTrendLoading" class="loading">
+                    <i class="fas fa-spinner"></i> Loading data...
+                </div>
+                <div id="timelineTrendChart" class="chart-container" style="display: none;">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+                <div class="data-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">First Record</div>
+                        <div class="summary-value" id="firstRecord">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Last Record</div>
+                        <div class="summary-value" id="lastRecord">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <a href="duplicate.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    </div>
+    
+    <script>
+        // API endpoint
+        const API_URL = 'https://smart-driver-assistance-system-bdh.onrender.com/api/driver/all';
+        
+        // Chart instances
+        let statusDistributionChart = null;
+        let hourlyDistributionChart = null;
+        let timelineChart = null;
+        
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load initial data
+            loadAnalysisData();
+            
+            // Set up event listeners
+            document.getElementById('timeRange').addEventListener('change', loadAnalysisData);
+            document.getElementById('refreshBtn').addEventListener('click', loadAnalysisData);
+            document.getElementById('pdfButton').addEventListener('click', generatePDFReport);
+        });
+        
+        // Main function to load all analysis data
+        function loadAnalysisData() {
+            // Show loading indicators
+            document.getElementById('statusCountLoading').style.display = 'flex';
+            document.getElementById('hourlyTrendLoading').style.display = 'flex';
+            document.getElementById('timelineTrendLoading').style.display = 'flex';
+            
+            document.getElementById('statusCountChart').style.display = 'none';
+            document.getElementById('hourlyTrendChart').style.display = 'none';
+            document.getElementById('timelineTrendChart').style.display = 'none';
+            
+            // Get selected time range
+            const timeRange = document.getElementById('timeRange').value;
+            
+            // Fetch data from API
+            fetchDriverData(timeRange)
+                .then(data => {
+                    if (data && data.length > 0) {
+                        // Process and display the data
+                        analyzeStatusDistribution(data);
+                        analyzeHourlyTrend(data);
+                        analyzeTimeline(data);
+                    } else {
+                        // Handle empty data
+                        showNoDataMessage();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    showErrorMessage();
+                });
+        }
+        
+        // Fetch driver data from API
+        async function fetchDriverData(timeRange) {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                let data = await response.json();
+                
+                // If data is not an array, convert it to an array
+                if (!Array.isArray(data)) {
+                    data = [data];
+                }
+                
+                // Filter data based on selected time range
+                return filterDataByTimeRange(data, timeRange);
+            } catch (error) {
+                console.error('Error fetching driver data:', error);
+                throw error;
+            }
+        }
+        
+        // Filter data based on time range
+        function filterDataByTimeRange(data, timeRange) {
+            const now = new Date();
+            let cutoffDate;
+            
+            switch (timeRange) {
+                case 'day':
+                    cutoffDate = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+                    break;
+                case 'week':
+                    cutoffDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+                    break;
+                case 'month':
+                    cutoffDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+                    break;
+                case 'all':
+                default:
+                    return data;
+            }
+            
+            return data.filter(item => {
+                if (!item.timestamp) return false;
+                const itemDate = new Date(item.timestamp);
+                return itemDate >= cutoffDate;
+            });
+        }
+        
+        // Analyze and display status distribution (Active vs Drowsy)
+        function analyzeStatusDistribution(data) {
+            // Count active and drowsy states
+            let activeCount = 0;
+            let drowsyCount = 0;
+            
+            data.forEach(item => {
+                if (item.driverStatus === 'Active') {
+                    activeCount++;
+                } else if (item.driverStatus === 'Drowsy' || item.driverStatus === 'Sleeping') {
+                    drowsyCount++;
+                } else if (item.drowsinessLevel) {
+                    // If driverStatus is not available, use drowsinessLevel
+                    if (item.drowsinessLevel === 'Low') {
+                        activeCount++;
+                    } else if (item.drowsinessLevel === 'Medium' || item.drowsinessLevel === 'High') {
+                        drowsyCount++;
+                    }
+                }
+            });
+            
+            // Calculate ratio
+            const total = activeCount + drowsyCount;
+            const drowsyRatio = total > 0 ? ((drowsyCount / total) * 100).toFixed(1) : 0;
+            
+            // Update summary values
+            document.getElementById('activeCount').textContent = activeCount;
+            document.getElementById('drowsyCount').textContent = drowsyCount;
+            document.getElementById('drowsyRatio').textContent = `${drowsyRatio}%`;
+            
+            // Create/update chart
+            const ctx = document.getElementById('statusDistributionChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (statusDistributionChart) {
+                statusDistributionChart.destroy();
+            }
+            
+            statusDistributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Drowsy'],
+                    datasets: [{
+                        data: [activeCount, drowsyCount],
+                        backgroundColor: [
+                            'rgba(46, 204, 113, 0.7)',
+                            'rgba(231, 76, 60, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(46, 204, 113, 1)',
+                            'rgba(231, 76, 60, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                font: {
+                                    family: "'Montserrat', sans-serif"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Hide loading, show chart
+            document.getElementById('statusCountLoading').style.display = 'none';
+            document.getElementById('statusCountChart').style.display = 'block';
+        }
+        
+        // Analyze and display hourly trend
+        function analyzeHourlyTrend(data) {
+            // Initialize hourly counters
+            const hourlyDrowsy = Array(24).fill(0);
+            const hourlyTotal = Array(24).fill(0);
+            
+            // Count drowsy instances by hour
+            data.forEach(item => {
+                if (!item.timestamp) return;
+                
+                const date = new Date(item.timestamp);
+                const hour = date.getHours();
+                
+                hourlyTotal[hour]++;
+                
+                if (item.driverStatus === 'Drowsy' || item.driverStatus === 'Sleeping') {
+                    hourlyDrowsy[hour]++;
+                } else if (item.drowsinessLevel === 'Medium' || item.drowsinessLevel === 'High') {
+                    hourlyDrowsy[hour]++;
+                }
+            });
+            
+            // Calculate percentage for each hour
+            const hourlyPercentage = hourlyTotal.map((total, index) => {
+                return total > 0 ? (hourlyDrowsy[index] / total) * 100 : 0;
+            });
+            
+            // Find peak and safest hours
+            let peakHour = 0;
+            let safestHour = 0;
+            let peakPercentage = hourlyPercentage[0];
+            let safestPercentage = hourlyPercentage[0];
+            
+            hourlyPercentage.forEach((percentage, hour) => {
+                if (hourlyTotal[hour] > 0) {
+                    if (percentage > peakPercentage) {
+                        peakHour = hour;
+                        peakPercentage = percentage;
+                    }
+                    if (percentage < safestPercentage || safestPercentage === 0) {
+                        safestHour = hour;
+                        safestPercentage = percentage;
+                    }
+                }
+            });
+            
+            // Format hours for display
+            const formatHour = (hour) => {
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const h = hour % 12 || 12;
+                return `${h} ${ampm}`;
+            };
+            
+            // Update summary values
+            document.getElementById('peakHour').textContent = hourlyTotal[peakHour] > 0 ? formatHour(peakHour) : '--';
+            document.getElementById('safestHour').textContent = hourlyTotal[safestHour] > 0 ? formatHour(safestHour) : '--';
+            
+            // Create/update chart
+            const ctx = document.getElementById('hourlyDistributionChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (hourlyDistributionChart) {
+                hourlyDistributionChart.destroy();
+            }
+            
+            // Prepare labels for all 24 hours
+            const hourLabels = Array.from({ length: 24 }, (_, i) => formatHour(i));
+            
+            hourlyDistributionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hourLabels,
+                    datasets: [{
+                        label: 'Drowsiness Percentage',
+                        data: hourlyPercentage,
+                        backgroundColor: 'rgba(76, 201, 240, 0.7)',
+                        borderColor: 'rgba(76, 201, 240, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                },
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                maxRotation: 90,
+                                minRotation: 45
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const hour = context.dataIndex;
+                                    return [
+                                        `Drowsy: ${hourlyDrowsy[hour]} instances`,
+                                        `Total: ${hourlyTotal[hour]} records`,
+                                        `Percentage: ${hourlyPercentage[hour].toFixed(1)}%`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Hide loading, show chart
+            document.getElementById('hourlyTrendLoading').style.display = 'none';
+            document.getElementById('hourlyTrendChart').style.display = 'block';
+        }
+        
+        // Analyze and display timeline trend
+        function analyzeTimeline(data) {
+            // Sort data by timestamp
+            const sortedData = [...data].sort((a, b) => {
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+            
+            // Group data by day or hour depending on the time range
+            const timeRange = document.getElementById('timeRange').value;
+            const timelineData = groupDataByTimeUnit(sortedData, timeRange);
+            
+            // Update first and last record timestamps
+            if (sortedData.length > 0) {
+                const firstDate = new Date(sortedData[0].timestamp);
+                const lastDate = new Date(sortedData[sortedData.length - 1].timestamp);
+                
+                document.getElementById('firstRecord').textContent = formatDate(firstDate);
+                document.getElementById('lastRecord').textContent = formatDate(lastDate);
+            } else {
+                document.getElementById('firstRecord').textContent = '--';
+                document.getElementById('lastRecord').textContent = '--';
+            }
+            
+            // Create/update chart
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (timelineChart) {
+                timelineChart.destroy();
+            }
+            
+            timelineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timelineData.labels,
+                    datasets: [{
+                        label: 'Drowsiness Percentage',
+                        data: timelineData.percentages,
+                        backgroundColor: 'rgba(67, 97, 238, 0.2)',
+                        borderColor: 'rgba(67, 97, 238, 1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: 'rgba(67, 97, 238, 1)',
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                },
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    return [
+                                        `Drowsy: ${timelineData.drowsy[index]} instances`,
+                                        `Total: ${timelineData.total[index]} records`,
+                                        `Percentage: ${timelineData.percentages[index].toFixed(1)}%`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Hide loading, show chart
+            document.getElementById('timelineTrendLoading').style.display = 'none';
+            document.getElementById('timelineTrendChart').style.display = 'block';
+        }
+        
+        // Group data by time unit (hour, day, week) for timeline chart
+        function groupDataByTimeUnit(data, timeRange) {
+            const timeGroups = new Map();
+            const drowsyGroups = new Map();
+            const totalGroups = new Map();
+            
+            // Determine grouping format based on time range
+            let formatString;
+            switch (timeRange) {
+                case 'day':
+                    formatString = 'HH:00'; // Group by hour
+                    break;
+                case 'week':
+                    formatString = 'MMM DD'; // Group by day
+                    break;
+                case 'month':
+                case 'all':
+                default:
+                    formatString = 'MMM DD'; // Group by day
+                    break;
+            }
+            
+            // Group data
+            data.forEach(item => {
+                if (!item.timestamp) return;
+                
+                const date = new Date(item.timestamp);
+                const timeKey = formatTimeKey(date, formatString);
+                
+                // Initialize counters if needed
+                if (!timeGroups.has(timeKey)) {
+                    timeGroups.set(timeKey, []);
+                    drowsyGroups.set(timeKey, 0);
+                    totalGroups.set(timeKey, 0);
+                }
+                
+                // Add item to group
+                timeGroups.get(timeKey).push(item);
+                totalGroups.set(timeKey, totalGroups.get(timeKey) + 1);
+                
+                // Check if drowsy
+                if (item.driverStatus === 'Drowsy' || item.driverStatus === 'Sleeping') {
+                    drowsyGroups.set(timeKey, drowsyGroups.get(timeKey) + 1);
+                } else if (item.drowsinessLevel === 'Medium' || item.drowsinessLevel === 'High') {
+                    drowsyGroups.set(timeKey, drowsyGroups.get(timeKey) + 1);
+                }
+            });
+            
+            // Convert to arrays for chart
+            const sortedKeys = Array.from(timeGroups.keys()).sort((a, b) => {
+                // Sort based on time range
+                if (timeRange === 'day') {
+                    // For hours, parse the hour value
+                    return parseInt(a.split(':')[0]) - parseInt(b.split(':')[0]);
+                } else {
+                    // For dates, convert to Date objects
+                    const dateA = parseTimeKey(a, formatString);
+                    const dateB = parseTimeKey(b, formatString);
+                    return dateA - dateB;
+                }
+            });
+            
+            const labels = sortedKeys;
+            const drowsy = sortedKeys.map(key => drowsyGroups.get(key));
+            const total = sortedKeys.map(key => totalGroups.get(key));
+            const percentages = sortedKeys.map(key => {
+                const t = totalGroups.get(key);
+                const d = drowsyGroups.get(key);
+                return t > 0 ? (d / t) * 100 : 0;
+            });
+            
+            return { labels, drowsy, total, percentages };
+        }
+        
+        // Format time key based on format string
+        function formatTimeKey(date, format) {
+            if (format === 'HH:00') {
+                return `${date.getHours().toString().padStart(2, '0')}:00`;
+            } else if (format === 'MMM DD') {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return `${months[date.getMonth()]} ${date.getDate().toString().padStart(2, '0')}`;
+            }
+            return date.toISOString();
+        }
+        
+        // Parse time key back to Date
+        function parseTimeKey(key, format) {
+            if (format === 'HH:00') {
+                const hour = parseInt(key.split(':')[0]);
+                const now = new Date();
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0);
+            } else if (format === 'MMM DD') {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = months.indexOf(key.split(' ')[0]);
+                const day = parseInt(key.split(' ')[1]);
+                const now = new Date();
+                return new Date(now.getFullYear(), month, day);
+            }
+            return new Date(key);
+        }
+        
+        // Format date for display
+        function formatDate(date) {
+            const options = { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            };
+            return date.toLocaleDateString('en-US', options);
+        }
+        
+        // Show no data message
+        function showNoDataMessage() {
+            document.getElementById('statusCountLoading').innerHTML = '<i class="fas fa-info-circle"></i> No data available for the selected time range.';
+            document.getElementById('hourlyTrendLoading').innerHTML = '<i class="fas fa-info-circle"></i> No data available for the selected time range.';
+            document.getElementById('timelineTrendLoading').innerHTML = '<i class="fas fa-info-circle"></i> No data available for the selected time range.';
+        }
+        
+        // Show error message
+        function showErrorMessage() {
+            document.getElementById('statusCountLoading').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error loading data. Please try again.';
+            document.getElementById('hourlyTrendLoading').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error loading data. Please try again.';
+            document.getElementById('timelineTrendLoading').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error loading data. Please try again.';
+        }
+        
+        // Generate PDF report
+        function generatePDFReport() {
+            // Import jsPDF from CDN
+            const { jsPDF } = window.jspdf;
+            
+            // Create a new PDF document
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            
+            // Add title
+            doc.setFontSize(20);
+            doc.setTextColor(0, 51, 102);
+            doc.text('Driver Status Analysis Report', pageWidth / 2, 20, { align: 'center' });
+            
+            // Add date
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            const reportDate = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            doc.text(`Generated on: ${reportDate}`, pageWidth / 2, 30, { align: 'center' });
+            
+            // Add time range
+            const timeRangeSelect = document.getElementById('timeRange');
+            const timeRangeText = timeRangeSelect.options[timeRangeSelect.selectedIndex].text;
+            doc.text(`Time Range: ${timeRangeText}`, pageWidth / 2, 40, { align: 'center' });
+            
+            // Add horizontal line
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 45, pageWidth - 20, 45);
+            
+            // Capture and add charts
+            const captureAndAddChart = (chartId, title, yPos) => {
+                return new Promise((resolve) => {
+                    const chartElement = document.getElementById(chartId);
+                    
+                    if (chartElement && chartElement.style.display !== 'none') {
+                        html2canvas(chartElement).then(canvas => {
+                            // Add section title
+                            doc.setFontSize(16);
+                            doc.setTextColor(0, 51, 102);
+                            doc.text(title, 20, yPos);
+                            
+                            // Add chart image
+                            const imgData = canvas.toDataURL('image/png');
+                            const imgWidth = pageWidth - 40;
+                            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                            
+                            doc.addImage(imgData, 'PNG', 20, yPos + 5, imgWidth, imgHeight);
+                            
+                            resolve(yPos + imgHeight + 20); // Return the new Y position
+                        });
+                    } else {
+                        resolve(yPos); // If chart not visible, return same Y position
+                    }
+                });
+            };
+            
+            // Add summary data
+            const addSummaryData = (yPos) => {
+                doc.setFontSize(16);
+                doc.setTextColor(0, 51, 102);
+                doc.text('Summary Statistics', 20, yPos);
+                
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                
+                const activeCount = document.getElementById('activeCount').textContent;
+                const drowsyCount = document.getElementById('drowsyCount').textContent;
+                const drowsyRatio = document.getElementById('drowsyRatio').textContent;
+                const peakHour = document.getElementById('peakHour').textContent;
+                const safestHour = document.getElementById('safestHour').textContent;
+                const firstRecord = document.getElementById('firstRecord').textContent;
+                const lastRecord = document.getElementById('lastRecord').textContent;
+                
+                let textY = yPos + 10;
+                const lineHeight = 8;
+                
+                doc.text(`Active States: ${activeCount}`, 25, textY); textY += lineHeight;
+                doc.text(`Drowsy States: ${drowsyCount}`, 25, textY); textY += lineHeight;
+                doc.text(`Drowsiness Ratio: ${drowsyRatio}`, 25, textY); textY += lineHeight;
+                doc.text(`Peak Drowsiness Hour: ${peakHour}`, 25, textY); textY += lineHeight;
+                doc.text(`Safest Hour: ${safestHour}`, 25, textY); textY += lineHeight;
+                doc.text(`First Record: ${firstRecord}`, 25, textY); textY += lineHeight;
+                doc.text(`Last Record: ${lastRecord}`, 25, textY);
+                
+                return textY + 15;
+            };
+            
+            // Add recommendations based on data
+            const addRecommendations = (yPos) => {
+                doc.setFontSize(16);
+                doc.setTextColor(0, 51, 102);
+                doc.text('Recommendations', 20, yPos);
+                
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                
+                let textY = yPos + 10;
+                const lineHeight = 8;
+                
+                // Get peak hour for recommendation
+                const peakHour = document.getElementById('peakHour').textContent;
+                const drowsyRatio = parseFloat(document.getElementById('drowsyRatio').textContent);
+                
+                // Add recommendations based on data
+                if (drowsyRatio > 30) {
+                    doc.text(`• High drowsiness ratio detected (${drowsyRatio}%). Consider more frequent breaks.`, 25, textY);
+                    textY += lineHeight;
+                }
+                
+                if (peakHour !== '--') {
+                    doc.text(`• Peak drowsiness occurs around ${peakHour}. Consider scheduling breaks or driver changes around this time.`, 25, textY);
+                    textY += lineHeight;
+                }
+                
+                doc.text(`• Ensure adequate sleep before driving sessions.`, 25, textY);
+                textY += lineHeight;
+                
+                doc.text(`• Consider using the Smart Driver Assistance System for real-time alerts.`, 25, textY);
+                
+                return textY + 15;
+            };
+            
+            // Chain all the PDF generation steps
+            captureAndAddChart('statusCountChart', 'Driver Status Distribution', 55)
+                .then(newY => captureAndAddChart('hourlyTrendChart', 'Drowsiness by Hour', newY))
+                .then(newY => {
+                    // Check if we need a new page
+                    if (newY > pageHeight - 100) {
+                        doc.addPage();
+                        newY = 20;
+                    }
+                    return captureAndAddChart('timelineTrendChart', 'Drowsiness Timeline', newY);
+                })
+                .then(newY => {
+                    // Check if we need a new page
+                    if (newY > pageHeight - 100) {
+                        doc.addPage();
+                        newY = 20;
+                    }
+                    return addSummaryData(newY);
+                })
+                .then(newY => {
+                    // Check if we need a new page
+                    if (newY > pageHeight - 80) {
+                        doc.addPage();
+                        newY = 20;
+                    }
+                    return addRecommendations(newY);
+                })
+                .then(() => {
+                    // Add footer
+                    const pageCount = doc.internal.getNumberOfPages();
+                    for (let i = 1; i <= pageCount; i++) {
+                        doc.setPage(i);
+                        doc.setFontSize(10);
+                        doc.setTextColor(150, 150, 150);
+                        doc.text(`Smart Driver Assistance System - Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                    }
+                    
+                    // Save the PDF
+                    doc.save('driver-status-analysis.pdf');
+                });
+        }
+    </script>
+</body>
+</html>
+
+
